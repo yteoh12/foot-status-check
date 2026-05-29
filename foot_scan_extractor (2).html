@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Foot Scan Analyser</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f0eb;--surface:#fff;--surface2:#faf7f4;
+  --border:#e8e0d8;--border2:#d4c9bc;
+  --text:#1a1410;--muted:#8a7d72;--muted2:#b5a99e;
+  --accent:#c17f3e;--accent2:#4a7c6f;
+  --danger:#c0392b;--warn:#d68910;--good:#2e7d5e;
+  --r:14px;--shadow:0 2px 16px rgba(0,0,0,0.08);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-weight:400;min-height:100vh;overflow-x:hidden}
+.page{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:52px 28px 100px}
+header{margin-bottom:52px;display:flex;align-items:flex-start;gap:24px}
+.logo-mark{width:56px;height:56px;background:var(--text);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.header-text h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,42px);font-weight:600;letter-spacing:-0.02em;line-height:1.1}
+.header-text h1 em{font-style:italic;color:var(--accent)}
+.subtitle{font-size:14px;color:var(--muted);font-weight:300;margin-top:8px;line-height:1.7;max-width:520px}
+.persist-note{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--good);font-family:'JetBrains Mono',monospace;background:rgba(46,125,94,.08);padding:4px 12px;border-radius:20px;border:1px solid rgba(46,125,94,.2);margin-top:10px}
+.upload-card{background:var(--surface);border:2px dashed var(--border2);border-radius:20px;padding:60px 32px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.upload-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent));opacity:0;transition:opacity .25s}
+.upload-card:hover,.upload-card.drag-over{border-color:var(--accent);background:#fffcf8}
+.upload-card:hover::before,.upload-card.drag-over::before{opacity:1}
+.up-icon{font-size:52px;margin-bottom:18px;display:block}
+.up-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;margin-bottom:6px}
+.up-sub{font-size:13px;color:var(--muted)}
+.up-badge{display:inline-block;margin-top:14px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent);background:rgba(193,127,62,.1);padding:5px 14px;border-radius:30px;border:1px solid rgba(193,127,62,.25)}
+#file-input{display:none}
+.file-queue{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.file-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;animation:slideIn .2s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.file-icon{font-size:20px;flex-shrink:0}
+.file-name{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-size{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.file-status{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.s-wait{background:rgba(138,125,114,.1);color:var(--muted)}
+.s-proc{background:rgba(74,124,111,.12);color:var(--accent2)}
+.s-done{background:rgba(46,125,94,.12);color:var(--good)}
+.s-err{background:rgba(192,57,43,.1);color:var(--danger)}
+.remove-btn{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:16px;padding:2px 5px;border-radius:4px;transition:color .15s}
+.remove-btn:hover{color:var(--danger)}
+.action-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn-primary{flex:1;min-width:180px;padding:14px 28px;background:var(--text);color:var(--bg);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:opacity .2s,transform .1s}
+.btn-primary:hover:not(:disabled){opacity:.82}
+.btn-primary:active:not(:disabled){transform:scale(.98)}
+.btn-primary:disabled{opacity:.3;cursor:not-allowed}
+.btn-sec{padding:14px 18px;background:var(--surface);border:1.5px solid var(--border2);color:var(--muted);font-family:'Sora',sans-serif;font-size:13px;border-radius:12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px}
+.btn-sec:hover{color:var(--text);border-color:var(--text)}
+.btn-danger:hover{color:var(--danger)!important;border-color:rgba(192,57,43,.4)!important}
+.btn-export{padding:10px 18px;background:rgba(46,125,94,.1);border:1.5px solid rgba(46,125,94,.3);color:var(--good);font-family:'Sora',sans-serif;font-size:13px;font-weight:500;border-radius:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-export:hover{background:rgba(46,125,94,.18)}
+.btn-export:disabled{opacity:.3;cursor:not-allowed}
+.spinner{width:16px;height:16px;border:2px solid rgba(245,240,235,.25);border-top-color:var(--bg);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.section-head{display:flex;align-items:center;gap:18px;margin:52px 0 22px}
+.section-head h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:600;white-space:nowrap}
+.section-head h2 em{font-style:italic;color:var(--accent)}
+.sh-line{flex:1;height:1px;background:var(--border)}
+.rec-badge{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent);background:rgba(193,127,62,.1);padding:4px 12px;border-radius:20px;white-space:nowrap;border:1px solid rgba(193,127,62,.2)}
+.stats-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;display:flex;align-items:baseline;gap:9px}
+.sv{font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.sv-g{color:var(--good)}.sv-w{color:var(--warn)}.sv-d{color:var(--danger)}
+.sl{font-size:11px;color:var(--muted)}
+.tbl-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.tbl-search{flex:1;min-width:200px;padding:10px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
+.tbl-search::placeholder{color:var(--muted2)}
+.tbl-search:focus{border-color:var(--accent)}
+.tbl-filter{padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Sora',sans-serif;font-size:13px;outline:none;cursor:pointer}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:940px}
+thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
+th{padding:12px 14px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--text)}
+th.sorted{color:var(--accent)}
+td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.tbold{font-weight:500}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:.03em}
+.b-normal{background:rgba(46,125,94,.1);color:var(--good);border:1px solid rgba(46,125,94,.2)}
+.b-bilateral{background:rgba(192,57,43,.1);color:var(--danger);border:1px solid rgba(192,57,43,.2)}
+.b-unilateral{background:rgba(214,137,16,.1);color:var(--warn);border:1px solid rgba(214,137,16,.2)}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:14px;padding:4px 7px;border-radius:6px;transition:color .15s}
+.btn-del:hover{color:var(--danger)}
+.empty-tbl{text-align:center;padding:56px 20px;color:var(--muted);font-size:14px;font-style:italic}
+#cards{display:flex;flex-direction:column;gap:20px;margin-top:10px}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;animation:fadeUp .35s ease;box-shadow:var(--shadow)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.pcard-head{padding:22px 26px;display:flex;align-items:flex-start;gap:18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.avatar{width:52px;height:52px;border-radius:14px;background:var(--text);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:17px;color:var(--bg);flex-shrink:0;font-weight:600}
+.pinfo{flex:1;min-width:0}
+.pname{font-family:'Playfair Display',serif;font-size:21px;font-weight:600;line-height:1.2}
+.pmeta{font-size:12px;color:var(--muted);margin-top:5px;font-family:'JetBrains Mono',monospace}
+.psrc{font-size:11px;color:var(--muted2);margin-top:3px}
+.diag-pill{flex-shrink:0;padding:7px 16px;border-radius:30px;font-size:11.5px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+.pcard-body{padding:24px 26px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:640px){.pcard-body{grid-template-columns:1fr}}
+.sec-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);margin-bottom:14px}
+.tile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile-label{font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
+.tile-vals{display:flex;gap:16px}
+.tv-side{font-size:10px;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-bottom:3px}
+.tv-num{font-size:19px;font-weight:500;font-family:'JetBrains Mono',monospace;line-height:1}
+.arch-section{grid-column:1/-1}
+.arch-rows{display:flex;flex-direction:column;gap:10px}
+.arch-row{display:flex;align-items:center;gap:12px}
+.a-side{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);width:18px;flex-shrink:0;font-weight:500}
+.a-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.a-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.a-fill-good{background:linear-gradient(90deg,#2e7d5e,#4aaa82)}
+.a-fill-flat{background:linear-gradient(90deg,#c0392b,#e74c3c)}
+.a-val{font-size:14px;font-weight:500;font-family:'JetBrains Mono',monospace;min-width:38px}
+.a-tag{font-size:10.5px;padding:2px 9px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:600;flex-shrink:0}
+.at-normal{background:rgba(46,125,94,.1);color:var(--good)}
+.at-flat{background:rgba(192,57,43,.1);color:var(--danger)}
+.a-threshold{font-size:10px;color:var(--muted2);margin-top:8px}
+.hallux-row{display:flex;gap:12px;flex-wrap:wrap}
+.hx-item{flex:1;min-width:130px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.hx-side{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:3px}
+.hx-deg{font-size:24px;font-weight:500;font-family:'JetBrains Mono',monospace;line-height:1}
+.hx-unit{font-size:12px;color:var(--muted)}
+.hx-pill{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-left:auto;flex-shrink:0}
+.hp-normal{background:rgba(46,125,94,.1);color:var(--good)}
+.hp-mild{background:rgba(214,137,16,.1);color:var(--warn)}
+.hp-moderate{background:rgba(193,127,62,.12);color:var(--accent)}
+.hp-severe{background:rgba(192,57,43,.1);color:var(--danger)}
+.toast{position:fixed;bottom:28px;right:28px;background:var(--text);color:var(--bg);border-radius:12px;padding:13px 22px;font-size:13px;z-index:999;animation:fadeUp .2s ease;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+footer{text-align:center;margin-top:80px;padding-top:24px;border-top:1px solid var(--border)}
+footer p{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo-mark">🦶</div>
+    <div class="header-text">
+      <h1>Foot Scan <em>Analyser</em></h1>
+      <p class="subtitle">Upload foot scan PDFs — AI extracts all measurements and diagnoses flatfoot conditions automatically.</p>
+      <div class="persist-note">💾 Records saved locally — persists across sessions</div>
+    </div>
+  </header>
+
+  <div class="upload-card" id="dropZone" onclick="document.getElementById('file-input').click()">
+    <span class="up-icon">📄</span>
+    <div class="up-title">Drop PDF files here</div>
+    <div class="up-sub">or click to browse from your computer</div>
+    <span class="up-badge">Accepts multiple .pdf files</span>
+  </div>
+  <input type="file" id="file-input" accept=".pdf" multiple />
+  <div class="file-queue" id="fileQueue"></div>
+  <div class="action-row">
+    <button class="btn-primary" id="extractBtn" disabled onclick="extractAll()">
+      <span id="btnIcon">✦</span><span id="btnText">Extract scans</span>
+    </button>
+    <button class="btn-sec btn-danger" onclick="clearAll()">🗑 Clear all</button>
+  </div>
+
+  <div id="cards"></div>
+
+  <div id="dbSection" style="display:none">
+    <div class="section-head">
+      <h2>Patient <em>Records</em></h2>
+      <div class="sh-line"></div>
+      <span class="rec-badge" id="recCount">0 records</span>
+    </div>
+    <div class="stats-row" id="statsBar"></div>
+    <div class="tbl-bar">
+      <input class="tbl-search" id="dbSearch" placeholder="Search name, gender, diagnosis…" oninput="renderTable()" />
+      <select class="tbl-filter" id="dbFilter" onchange="renderTable()">
+        <option value="">All diagnoses</option>
+        <option value="Normal Foot">Normal Foot</option>
+        <option value="Bilateral Flatfoot">Bilateral Flatfoot</option>
+        <option value="Unilateral Flatfoot">Unilateral Flatfoot</option>
+      </select>
+      <button class="btn-export" id="exportBtn" onclick="exportCSV()" disabled>⬇ Export CSV</button>
+      <button class="btn-sec btn-danger" style="padding:10px 14px;font-size:13px" onclick="clearAll()">🗑 Clear</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortBy('patientName',this)">Patient ↕</th>
+          <th onclick="sortBy('gender',this)">Gender ↕</th>
+          <th onclick="sortBy('scanDate',this)">Scan Date ↕</th>
+          <th onclick="sortBy('diagnosis',this)">Diagnosis ↕</th>
+          <th onclick="sortBy('archIndexLeft',this)">Arch L ↕</th>
+          <th onclick="sortBy('archIndexRight',this)">Arch R ↕</th>
+          <th onclick="sortBy('footLengthLeft',this)">Len L ↕</th>
+          <th onclick="sortBy('footLengthRight',this)">Len R ↕</th>
+          <th onclick="sortBy('shoeSizeLeft',this)">Size L ↕</th>
+          <th onclick="sortBy('shoeSizeRight',this)">Size R ↕</th>
+          <th onclick="sortBy('halluxAngleLeft',this)">Hallux L° ↕</th>
+          <th onclick="sortBy('halluxAngleRight',this)">Hallux R° ↕</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tbdy"></tbody>
+      </table>
+      <div class="empty-tbl" id="emptyTbl" style="display:none">No matching records found.</div>
+    </div>
+  </div>
+
+  <footer><p>Foot Scan Analyser · Powered by Claude AI · Data stored in browser localStorage</p></footer>
+</div>
+
+<script>
+const STORE_KEY = 'footScanRecords_v1';
+function saveRecords(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }catch(e){} }
+function loadRecords(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; } }
+
+let records = loadRecords();
+let sortKey = 'patientName', sortDir = 1;
+const files = [], resultMap = {};
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('file-input');
+const extractBtn= document.getElementById('extractBtn');
+
+dropZone.addEventListener('dragover',  e=>{ e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',      e=>{ e.preventDefault(); dropZone.classList.remove('drag-over'); addFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change',   e=>{ addFiles(e.target.files); fileInput.value=''; });
+
+if(records.length){ document.getElementById('dbSection').style.display='block'; renderTable(); }
+
+function fmt(b){ return b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'; }
+function initials(n){ return (n||'?').split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+function diagnose(l,r){
+  const lv=parseFloat(l), rv=parseFloat(r);
+  if(isNaN(lv)||isNaN(rv)) return {label:'Unknown',cls:'b-normal'};
+  if(lv>=0.3 && rv>=0.3)  return {label:'Bilateral Flatfoot', cls:'b-bilateral'};
+  if(lv<0.3  && rv<0.3)   return {label:'Normal Foot',        cls:'b-normal'};
+  return                          {label:'Unilateral Flatfoot',cls:'b-unilateral'};
+}
+
+function halluxGrade(deg){
+  const d=parseFloat(deg);
+  if(isNaN(d)) return {label:'N/A',     cls:'hp-normal'};
+  if(d<15)     return {label:'Normal',  cls:'hp-normal'};
+  if(d<20)     return {label:'Mild',    cls:'hp-mild'};
+  if(d<30)     return {label:'Moderate',cls:'hp-moderate'};
+  return              {label:'Severe',  cls:'hp-severe'};
+}
+
+function archFillCls(v){ return parseFloat(v)>=0.3?'a-fill-flat':'a-fill-good'; }
+function archTagCls(v) { return parseFloat(v)>=0.3?'at-flat':'at-normal'; }
+function archTagLbl(v) { return parseFloat(v)>=0.3?'Flat':'Normal'; }
+function archW(v)      { return Math.min(Math.round((Math.min(parseFloat(v)||0,0.6)/0.6)*100),100)+'%'; }
+function diagCls(d)    { return d==='Bilateral Flatfoot'?'b-bilateral':d==='Unilateral Flatfoot'?'b-unilateral':'b-normal'; }
+
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2600);
+}
+
+function addFiles(newFiles){
+  for(const f of newFiles) if(f.type==='application/pdf'&&!files.find(x=>x.name===f.name)) files.push(f);
+  renderQueue(); extractBtn.disabled=files.length===0;
+}
+function removeFile(i){ files.splice(i,1); renderQueue(); extractBtn.disabled=files.length===0; }
+
+function renderQueue(){
+  document.getElementById('fileQueue').innerHTML = files.map((f,i)=>{
+    const r=resultMap[f.name];
+    const s=r?.status==='processing'?'<span class="file-status s-proc">⟳ processing</span>'
+           :r?.status==='done'      ?'<span class="file-status s-done">✓ done</span>'
+           :r?.status==='error'     ?'<span class="file-status s-err">✗ error</span>'
+           :                         '<span class="file-status s-wait">waiting</span>';
+    return `<div class="file-row"><span class="file-icon">📄</span><span class="file-name">${f.name}</span><span class="file-size">${fmt(f.size)}</span>${s}<button class="remove-btn" onclick="removeFile(${i})">✕</button></div>`;
+  }).join('');
+}
+
+function clearAll(){
+  files.length=0; records=[]; for(const k in resultMap) delete resultMap[k];
+  saveRecords(); renderQueue(); extractBtn.disabled=true;
+  document.getElementById('cards').innerHTML='';
+  document.getElementById('dbSection').style.display='none';
+}
+
+function toB64(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+}
+
+async function extractAll(){
+  extractBtn.disabled=true;
+  document.getElementById('btnIcon').innerHTML='<div class="spinner"></div>';
+  document.getElementById('btnText').textContent='Extracting…';
+
+  for(const f of files){
+    if(resultMap[f.name]?.status==='done') continue;
+    resultMap[f.name]={status:'processing'}; renderQueue();
+    try{
+      const b64=await toB64(f);
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          system:`Extract foot scan data from the PDF and return ONLY valid JSON, no markdown, no extra text:
+{"patientName":"","gender":"","scanDate":"","footLengthLeft":"","footLengthRight":"","footWidthLeft":"","footWidthRight":"","shoeSizeLeft":"","shoeSizeRight":"","archIndexLeft":"","archIndexRight":"","heelAngleLeft":"","heelAngleRight":"","legAngleLeft":"","legAngleRight":"","halluxAngleLeft":"","halluxAngleRight":""}
+Use empty string if not found. All numbers as strings without units.`,
+          messages:[{role:'user',content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+            {type:'text',text:'Extract all foot scan measurements from this PDF.'}
+          ]}]
+        })
+      });
+      const data=await resp.json();
+      if(data.error) throw new Error(data.error.message);
+      const text=(data.content||[]).map(c=>c.text||'').join('');
+      const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+      resultMap[f.name]={status:'done',data:parsed};
+      const diag=diagnose(parsed.archIndexLeft,parsed.archIndexRight);
+      const rec={...parsed,diagnosis:diag.label,sourceFile:f.name};
+      const idx=records.findIndex(r=>r.patientName===parsed.patientName&&r.scanDate===parsed.scanDate&&r.sourceFile===f.name);
+      if(idx>=0) records[idx]=rec; else records.push(rec);
+      saveRecords();
+    }catch(e){
+      resultMap[f.name]={status:'error',err:e.message};
+      console.error('Extract error:',e);
+    }
+    renderQueue();
+  }
+
+  document.getElementById('btnIcon').textContent='✦';
+  document.getElementById('btnText').textContent='Extract scans';
+  extractBtn.disabled=false;
+  renderCards(); renderTable();
+  if(records.length) document.getElementById('dbSection').style.display='block';
+  toast('✓ Done — '+records.length+' record'+(records.length===1?'':'s')+' saved');
+}
+
+function renderCards(){
+  const done=files.filter(f=>resultMap[f.name]?.status==='done');
+  document.getElementById('cards').innerHTML=done.map(f=>{
+    const d=resultMap[f.name].data;
+    const diag=diagnose(d.archIndexLeft,d.archIndexRight);
+    const hlL=halluxGrade(d.halluxAngleLeft), hlR=halluxGrade(d.halluxAngleRight);
+    return `<div class="pcard">
+      <div class="pcard-head">
+        <div class="avatar">${initials(d.patientName)}</div>
+        <div class="pinfo">
+          <div class="pname">${d.patientName||'Unknown Patient'}</div>
+          <div class="pmeta">${[d.gender,d.scanDate].filter(Boolean).join(' · ')}</div>
+          <div class="psrc">📄 ${f.name}</div>
+        </div>
+        <span class="diag-pill badge ${diag.cls}">${diag.label}</span>
+      </div>
+      <div class="pcard-body">
+        <div>
+          <div class="sec-label">Foot dimensions</div>
+          <div class="tile-grid">
+            <div class="tile"><div class="tile-label">Length (mm)</div><div class="tile-vals"><div><div class="tv-side">L</div><div class="tv-num">${d.footLengthLeft||'—'}</div></div><div><div class="tv-side">R</div><div class="tv-num">${d.footLengthRight||'—'}</div></div></div></div>
+            <div class="tile"><div class="tile-label">Width (mm)</div><div class="tile-vals"><div><div class="tv-side">L</div><div class="tv-num">${d.footWidthLeft||'—'}</div></div><div><div class="tv-side">R</div><div class="tv-num">${d.footWidthRight||'—'}</div></div></div></div>
+            <div class="tile"><div class="tile-label">Shoe size (EU)</div><div class="tile-vals"><div><div class="tv-side">L</div><div class="tv-num">${d.shoeSizeLeft||'—'}</div></div><div><div class="tv-side">R</div><div class="tv-num">${d.shoeSizeRight||'—'}</div></div></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec-label">Hallux valgus angle</div>
+          <div class="hallux-row">
+            <div class="hx-item"><div><div class="hx-side">LEFT</div><div><span class="hx-deg">${d.halluxAngleLeft||'—'}</span><span class="hx-unit"> °</span></div></div><span class="hx-pill ${hlL.cls}">${hlL.label}</span></div>
+            <div class="hx-item"><div><div class="hx-side">RIGHT</div><div><span class="hx-deg">${d.halluxAngleRight||'—'}</span><span class="hx-unit"> °</span></div></div><span class="hx-pill ${hlR.cls}">${hlR.label}</span></div>
+          </div>
+        </div>
+        <div class="arch-section">
+          <div class="sec-label">Arch index</div>
+          <div class="arch-rows">
+            <div class="arch-row"><span class="a-side">L</span><div class="a-track"><div class="a-fill ${archFillCls(d.archIndexLeft)}" style="width:${archW(d.archIndexLeft)}"></div></div><span class="a-val">${d.archIndexLeft||'—'}</span><span class="a-tag ${archTagCls(d.archIndexLeft)}">${archTagLbl(d.archIndexLeft)}</span></div>
+            <div class="arch-row"><span class="a-side">R</span><div class="a-track"><div class="a-fill ${archFillCls(d.archIndexRight)}" style="width:${archW(d.archIndexRight)}"></div></div><span class="a-val">${d.archIndexRight||'—'}</span><span class="a-tag ${archTagCls(d.archIndexRight)}">${archTagLbl(d.archIndexRight)}</span></div>
+          </div>
+          <div class="a-threshold">Threshold: &lt; 0.30 = Normal · ≥ 0.30 = Flat</div>
+        </div>
+        <div>
+          <div class="sec-label">Heel &amp; leg angles</div>
+          <div class="tile-grid" style="grid-template-columns:repeat(2,1fr)">
+            <div class="tile"><div class="tile-label">Heel angle (°)</div><div class="tile-vals"><div><div class="tv-side">L</div><div class="tv-num">${d.heelAngleLeft||'—'}</div></div><div><div class="tv-side">R</div><div class="tv-num">${d.heelAngleRight||'—'}</div></div></div></div>
+            <div class="tile"><div class="tile-label">Leg angle (°)</div><div class="tile-vals"><div><div class="tv-side">L</div><div class="tv-num">${d.legAngleLeft||'—'}</div></div><div><div class="tv-side">R</div><div class="tv-num">${d.legAngleRight||'—'}</div></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getFiltered(){
+  const q=(document.getElementById('dbSearch')?.value||'').toLowerCase();
+  const df=document.getElementById('dbFilter')?.value||'';
+  return records.filter(r=>
+    (!q ||[r.patientName,r.gender,r.diagnosis,r.scanDate].some(v=>(v||'').toLowerCase().includes(q)))&&
+    (!df||r.diagnosis===df)
+  );
+}
+
+function sortBy(key,th){
+  if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=1;}
+  document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted'));
+  th.classList.add('sorted'); renderTable();
+}
+
+function renderTable(){
+  const rows=getFiltered().sort((a,b)=>{
+    const av=a[sortKey]||'',bv=b[sortKey]||'';
+    const an=parseFloat(av),bn=parseFloat(bv);
+    if(!isNaN(an)&&!isNaN(bn)) return (an-bn)*sortDir;
+    return av.localeCompare(bv)*sortDir;
+  });
+  const tbody=document.getElementById('tbdy');
+  const empty=document.getElementById('emptyTbl');
+  const expBtn=document.getElementById('exportBtn');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';expBtn.disabled=true;}
+  else{
+    empty.style.display='none';expBtn.disabled=false;
+    tbody.innerHTML=rows.map(r=>{
+      const ri=records.indexOf(r);
+      return `<tr>
+        <td class="tbold">${r.patientName||'—'}</td>
+        <td>${r.gender||'—'}</td>
+        <td class="mono">${r.scanDate||'—'}</td>
+        <td><span class="badge ${diagCls(r.diagnosis)}">${r.diagnosis||'—'}</span></td>
+        <td class="mono">${r.archIndexLeft||'—'}</td>
+        <td class="mono">${r.archIndexRight||'—'}</td>
+        <td class="mono">${r.footLengthLeft||'—'}</td>
+        <td class="mono">${r.footLengthRight||'—'}</td>
+        <td class="mono">${r.shoeSizeLeft||'—'}</td>
+        <td class="mono">${r.shoeSizeRight||'—'}</td>
+        <td class="mono">${r.halluxAngleLeft||'—'}</td>
+        <td class="mono">${r.halluxAngleRight||'—'}</td>
+        <td><button class="btn-del" onclick="deleteRow(${ri})" title="Remove">🗑</button></td>
+      </tr>`;
+    }).join('');
+  }
+  const total=records.length,norm=records.filter(r=>r.diagnosis==='Normal Foot').length,
+        uni=records.filter(r=>r.diagnosis==='Unilateral Flatfoot').length,
+        bil=records.filter(r=>r.diagnosis==='Bilateral Flatfoot').length;
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat-chip"><span class="sv">${total}</span><span class="sl">total</span></div>
+    <div class="stat-chip"><span class="sv sv-g">${norm}</span><span class="sl">normal foot</span></div>
+    <div class="stat-chip"><span class="sv sv-w">${uni}</span><span class="sl">unilateral flatfoot</span></div>
+    <div class="stat-chip"><span class="sv sv-d">${bil}</span><span class="sl">bilateral flatfoot</span></div>`;
+  document.getElementById('recCount').textContent=total+' record'+(total===1?'':'s');
+}
+
+function deleteRow(i){
+  records.splice(i,1); saveRecords(); renderTable();
+  if(!records.length) document.getElementById('dbSection').style.display='none';
+  toast('Record removed');
+}
+
+function esc(v){ const s=String(v??''); return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+
+function exportCSV(){
+  const rows=getFiltered();
+  if(!rows.length){ toast('Nothing to export'); return; }
+  const hdr=['Patient Name','Gender','Scan Date','Diagnosis',
+    'Arch Index L','Arch Index R','Foot Length L (mm)','Foot Length R (mm)',
+    'Foot Width L (mm)','Foot Width R (mm)','Shoe Size L (EU)','Shoe Size R (EU)',
+    'Hallux Angle L (°)','Hallux Angle R (°)','Heel Angle L (°)','Heel Angle R (°)',
+    'Leg Angle L (°)','Leg Angle R (°)','Source File'];
+  const lines=[hdr.map(esc).join(',')];
+  for(const r of rows){
+    lines.push([r.patientName,r.gender,r.scanDate,r.diagnosis,
+      r.archIndexLeft,r.archIndexRight,r.footLengthLeft,r.footLengthRight,
+      r.footWidthLeft,r.footWidthRight,r.shoeSizeLeft,r.shoeSizeRight,
+      r.halluxAngleLeft,r.halluxAngleRight,r.heelAngleLeft,r.heelAngleRight,
+      r.legAngleLeft,r.legAngleRight,r.sourceFile].map(esc).join(','));
+  }
+  const blob=new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='foot_scans_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('✓ Exported '+rows.length+' record'+(rows.length===1?'':'s'));
+}
+</script>
+</body>
+</html>
